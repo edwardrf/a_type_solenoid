@@ -3,28 +3,60 @@ var sp = require("serialport");
 var SerialPort = sp.SerialPort;
 var async = require("async");
 var started = false;
+var fs = require('fs');
 
 var serialPort;
 var data;
 var content = '';
+var pauseFlag = false;
+var inputFilename;
 
-var rollUnit = 1200;
+var rollUnit = 1200; // For picture print, it is 495/50?
 var moveUnit = 200;
 
-if(process.argv[2]) rollUnit = parseInt(process.argv[2]);
-if(process.argv[3]) moveUnit = parseInt(process.argv[3]);
+if(process.argv[2]) inputFilename = process.argv[2];
+if(process.argv[3]) rollUnit = parseInt(process.argv[3]);
+if(process.argv[4]) moveUnit = parseInt(process.argv[4]);
 
+console.log(inputFilename);
 console.log('Unit : ', rollUnit, moveUnit);
+
+if(!inputFilename || !fs.existsSync(inputFilename)) {
+  console.log('Input file not specified or not exist.');
+  process.exit(0);
+}
+
+var readline = require('readline');
+var rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+rl.on('line', function(line){
+  if(line == 'p') {
+    pauseFlag = true;
+  }else if(line == 'r') {
+    pauseFlag = false;
+    serialPort.write('x'); // This is a hack to reinitiate a callback from the serial port, there is no 'x' command
+  }
+})
 
 async.waterfall([
   function(callback) {
-    process.stdin.resume();
-    process.stdin.on('data', function(buf) { content += buf.toString(); });
-    process.stdin.on('end', callback);
+    // process.stdin.resume();
+    // process.stdin.on('data', function(buf) { content += buf.toString(); });
+    // process.stdin.on('end', callback);
+    fs.readFile(inputFilename, 'utf8', callback);
   },
-  function(callback){
-    console.log(content);
-    callback(null);
+  function(fcontent, callback) {
+    console.log(fcontent);
+    var lines = fcontent.split('\n');
+    for(var i = 0; i < lines.length; i++) {
+      lines[i] = lines[i].trimRight();
+    }
+
+    content = lines.join('\n');
+    callback();
   },
   sp.list,
   function(ports, callback){
@@ -33,7 +65,9 @@ async.waterfall([
       baudrate: 115200,
       parser: sp.parsers.readline("\r\n")
     });
-    callback(null, serialPort);
+    setTimeout(function(){
+      callback(null, serialPort);
+    }, 1000);
   },
   function(serialPort, callback){
     serialPort.open(callback);
@@ -62,7 +96,8 @@ async.waterfall([
         }
 
         var margin = 30 - bufLen;
-        while(margin > 0 && content.length > 0) {
+        // console.log('PF', !pauseFlag, content, 'C');
+        while(margin > 0 && content.length > 0 && !pauseFlag) {
           var char = content.charAt(0);
           var cmd = '';
           if(char == '\n'){
@@ -90,7 +125,7 @@ async.waterfall([
             content = content.substr(2);
             continue;
           }else {
-            // console.log(char);
+            // console.log(char)k;
             cmd += 'p' + char + 'm0 ' + moveUnit;
           }
           margin -= cmd.length;
@@ -100,10 +135,16 @@ async.waterfall([
           // console.log('d');
         }
         console.log('done');
+        if(content.length == 0 && bufLen == 0) callback(null);
       }
     });
   }
   // serialPort.close
 ], function(err) {
   console.log(err);
+  console.log("All Done");
+  setTimeout(function(){
+    serialPort.close();
+    process.exit(0);
+  }, 3000);
 });

@@ -9,7 +9,7 @@
  * rB N: roll paper in direction B for N steps, B: 0 rolls to next line, 1 rolls back. A line is about 1000 steps
  * mB N: move the carrage in the direction B for N steps, B: 0 carrage moves to left, 1 moves to right, a character is about 160steps wide
  * i, j, k, l: each of this moves the pager in the up, left, down, right direction for easier positioning.
- ``* R  : Return to start of the line
+ * R  : Return to start of the line
  * E  : Go to the end of the line
  * CX : Color X, X=='r' red, X=='b' black
  * SN : Shift N == 1 shift, N == 0 small case
@@ -234,10 +234,10 @@ void roll(int dir, int steps) {
 
 void move(int dir, int steps) {
   digitalWrite(53, LOW);
-  int speed = 300;
+  int speed = 150;
   for(int i = steps; i > 0; i--) {
-    if(speed > 100 && steps > 300) speed --;
-    if(speed < 300 && steps <= 300) speed ++;
+    // if(speed > 100 && steps > 150) speed --;
+    // if(speed < 150 && steps <= 150) speed ++;
     moveWithSpeed(dir, speed);
   }
   digitalWrite(53, HIGH);
@@ -292,10 +292,10 @@ void nc() {
 void shift(int s){
   shiftState = s;
   if(s)
-    shiftServo.write(60);
+    shiftServo.write(64);
   else
     shiftServo.write(90);
-  delay(500);
+  delay(800);
 }
 
 void color(int c){
