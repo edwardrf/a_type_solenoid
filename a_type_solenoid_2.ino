@@ -31,6 +31,8 @@
 int krow[128] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 2, 1, 2, 4, 3, 3, 4, 4, 3, 2, 3, 3, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 3, 2, 2, 4, 2, 4, 2, 4,-1, 3,-1,-1, 1,-1, 3, 4, 4, 3, 2, 3, 3, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 3, 2, 2, 4, 2, 4, 2, 4,-1, 4,-1,-1};
 int kcol[128] = {1, 2, 3, 4, 5, 7, 8, 9,10,11,12, 8,11, 9,10,10, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,10,11,12,11,10,11, 1, 5, 3, 3, 3, 4, 5, 6, 8, 7, 8, 9, 7, 6, 9,10, 1, 4, 2, 5, 7, 4, 2, 2, 6, 1,-1,11,-1,-1, 6,-1, 1, 5, 3, 3, 3, 4, 5, 6, 8, 7, 8, 9, 7, 6, 9,10, 1, 4, 2, 5, 7, 4, 2, 2, 6, 1,-1,10,-1,-1};
 int ksft[128] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,-1, 0,-1,-1, 1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-1, 0,-1,-1};
+//                                                         1qa 2zws3xed4crf5vtg6byh7nuj8mik9,ol0.p:*?<@+
+// char keys[] = "1qa2zws3xed4crf5vtg6byh7nuj8mik9,ol0.p:*?<@+!QA\"ZWS#XED$CRF%VTG_BYH&NUJ'MIK(,)";
 
 void setup();
 void loop();
@@ -51,6 +53,8 @@ void nc(); // Next char
 Servo shiftServo, colorServo;
 int shiftState;
 char colorState;
+long lastCharTime = 0;
+char lastChar = 0;
 
 void setup(){
 
@@ -82,9 +86,9 @@ void setup(){
   shiftServo.attach(44); // 90 normal, 60 shift
   colorServo.attach(45); // 90 red, 110 black
   shiftServo.write(90);
-  colorServo.write(90);
+  colorServo.write(80);
 
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial.println("Ready");
 }
 
@@ -201,6 +205,26 @@ void key(char c) {
 
   if(ksft[idx] != shiftState) shift(ksft[idx]);
 
+  if(lastChar && lastChar != c) {
+    int lastCol = kcol[lastChar - 33] - 1;
+    int distance = abs(lastCol - col);
+    Serial.print("lastChar ");
+    Serial.print(lastChar);
+    Serial.print("\tlastCol ");
+    Serial.print(lastCol);
+    Serial.print("\t Col ");
+    Serial.print(col);
+    Serial.print("\t dist ");
+    Serial.println(distance);
+    long dt = 400;
+    if(distance < 3) {
+      dt -= distance * 100;
+      long now = millis();
+      dt -= now - lastCharTime;
+      if(dt > 0) delay(dt);
+    }
+  }
+
   Serial.print(row);
   Serial.print('\t');
   Serial.print(col);
@@ -220,7 +244,9 @@ void key(char c) {
 
   digitalWrite(22 + col, LOW);
   digitalWrite(4 + row, LOW);
-
+  delay(20);
+  lastChar = c;
+  lastCharTime = millis();
 }
 
 void roll(int dir, int steps) {
@@ -301,8 +327,8 @@ void shift(int s){
 void color(int c){
   colorState = c;
   if(c == 'r')
-    colorServo.write(110);
+    colorServo.write(100);
   else
-    colorServo.write(90);
+    colorServo.write(80);
   delay(500);
 }
